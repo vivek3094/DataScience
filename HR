@@ -1,0 +1,90 @@
+setwd('D:\\RWS');
+hr=read.csv('HR.csv')
+attach(hr)
+library(corrplot)
+sapply(hr,function(x){sum(is.na(x))})
+
+cor(na.omit(hr)[,-c(9,10)])
+corrplot(cor(na.omit(hr)[,-c(9,10)]),method='number')
+table(time_spend_company)
+#deduction : yes its a factr
+table(number_project)
+table(salary)
+# package to split intelligently
+#install.packages('caTools')
+library(caTools)
+sapply(hr,function(x){sum(is.na(x))})
+# will replacd with -999 bevause tree algorithm will ignore outliers
+hr[is.na(hr)]=-999
+split=sample.split(hr$left,SplitRatio = 0.8)
+train=subset(hr,split==TRUE)
+test=subset(hr,split==FALSE)
+train=subset(hr[1:14000,])
+test=subset(hr[14001:14999,])
+
+# logistic regression
+
+hr_lr_modal=glm(as.factor(train$left)~.,data=train, family = "binomial")
+summary(hr_lr_modal)
+prediction=predict(hr_lr_modal,newdata = test)
+#converting probabilities to 1 or 0 
+pred1=ifelse(predict(hr_lr_modal, newdata = test, type='response')>.5,1,0)
+table(pred1,as.factor(test$left))
+library(caret)
+confusionMatrix(data=pred1, reference = test$left)
+
+# logistic regression with data split on rows
+train=subset(hr[1:14000,])
+test=subset(hr[14001:14999,])
+hr_lr_modal=glm(as.factor(train$left)~.,data=train, family = "binomial")
+summary(hr_lr_modal)
+prediction=predict(hr_lr_modal,newdata = test)
+#converting probabilities to 1 or 0 
+pred1=ifelse(predict(hr_lr_modal, newdata = test, type='response')>.5,1,0)
+table(pred1,as.factor(test$left))
+#library(caret)
+confusionMatrix(data=pred1, reference = test$left)
+
+# CART
+train=subset(hr,split==TRUE)
+test=subset(hr,split==FALSE)
+sapply(hr,function(x){sum(is.na(x))})
+library(rpart)
+library(rpart.plot)
+hr_modal=rpart(train$left~.,data=train,cp=0.01)
+summary(hr_modal)
+# minimizing cp value
+# if we dont put factor here it will run regression tree instead of classification
+hr_modal=rpart(as.factor(left)~.,data=train,cp=0.001)
+prp(hr_modal,extra=3,varlen = 12,cex=.4)
+summary(hr_modal)
+# here we see that cp value is almost constant at cp=0.001 so fix it.
+prediction=predict(hr_modal,newdata = test, type="class")
+# converting probabilities to 1 or 0 
+# class will give 0 or 1 directly
+table(test$left,prediction)
+library(caret)
+confusionMatrix(data=prediction, reference = test$left)
+
+varImp(hr_modal)
+
+#randomForest
+library(randomForest)
+hr_rf=randomForest(as.factor(left)~.,data=train)
+summary(hr_rf)
+prediction=predict(hr_rf,newdata = test)
+nrow(test)
+nrow(train)
+nrow(hr)
+#converting probabilities to 1 or 0 
+# class will give 0 or 1 directly
+table(as.factor(test$left),prediction)
+library(caret)
+confusionMatrix(data=prediction, reference = test$left)
+# here in random forest accuracy is higher but specificity is very low
+
+varImpPlot(hr_rf)
+
+
+# here we see that gini index is maximum for satisfaction level. 
+# Similarly, in CART also we can see that satisfaction level is where the tree is split on.
